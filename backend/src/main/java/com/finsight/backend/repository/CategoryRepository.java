@@ -11,13 +11,26 @@ public interface CategoryRepository extends MongoRepository<Category, String> {
 
     List<Category> findByUserId(String userId);
 
+    List<Category> findBySystemCategoryTrueOrUserId(
+            String userId
+    );
+
     List<Category> findByType(CategoryType type);
 
-    List<Category> findByUserIdAndType(String userId, CategoryType type);
+    List<Category> findByUserIdAndType(
+            String userId,
+            CategoryType type
+    );
 
-    Optional<Category> findByIdAndUserId(String id, String userId);
+    Optional<Category> findByIdAndUserId(
+            String id,
+            String userId
+    );
 
     Optional<Category> findByCode(String code);
 
-    boolean existsByNameAndUserId(String name, String userId);
+    boolean existsByNameAndUserId(
+            String name,
+            String userId
+    );
 }

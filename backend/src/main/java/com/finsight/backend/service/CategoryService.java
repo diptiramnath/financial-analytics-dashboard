@@ -27,6 +27,15 @@ public class CategoryService {
 
         User currentUser = currentUserService.getCurrentUser();
 
+        if (categoryRepository.existsByNameAndUserId(
+                request.getName(),
+                currentUser.getId())) {
+
+            throw new IllegalArgumentException(
+                    "Category already exists"
+            );
+        }
+
         Category category = Category.builder()
                 .userId(currentUser.getId())
                 .code(request.getCode())
@@ -48,14 +57,9 @@ public class CategoryService {
 
         User currentUser = currentUserService.getCurrentUser();
 
-        List<Category> categories = categoryRepository.findAll()
+        return categoryRepository
+                .findBySystemCategoryTrueOrUserId(currentUser.getId())
                 .stream()
-                .filter(category ->
-                        category.isSystemCategory()
-                                || currentUser.getId().equals(category.getUserId()))
-                .toList();
-
-        return categories.stream()
                 .map(this::mapToResponse)
                 .toList();
     }
