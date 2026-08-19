@@ -82,53 +82,23 @@ public class TransactionService {
     public TransactionResponse createTransaction(
             CreateTransactionRequest request) {
 
-        User currentUser = currentUserService.getCurrentUser();
-
-        Account account = accountRepository
-                .findByIdAndUserId(
-                        request.getAccountId(),
-                        currentUser.getId()
-                )
-                .orElseThrow(() ->
-                        new AccountNotFoundException(
-                                "Account not found"
-                        )
-                );
-
-        Transaction transaction = Transaction.builder()
-                .userId(currentUser.getId())
-                .accountId(account.getId())
-                .categoryId(request.getCategoryId())
-                .amount(request.getAmount())
-                .type(request.getType())
-                .merchant(request.getMerchant())
-                .description(request.getDescription())
-                .transactionDate(request.getTransactionDate())
-                .paymentMethod(request.getPaymentMethod())
-                .notes(request.getNotes())
-                .status(TransactionStatus.COMPLETED)
-                .recurring(false)
-                .createdAt(LocalDateTime.now())
-                .updatedAt(LocalDateTime.now())
-                .build();
-
-        if (request.getType() == TransactionType.INCOME) {
-
-            account.setBalance(
-                    account.getBalance().add(request.getAmount())
-            );
-
-        } else if (request.getType() == TransactionType.EXPENSE) {
-
-            account.setBalance(
-                    account.getBalance().subtract(request.getAmount())
-            );
-        }
-
-        accountRepository.save(account);
+        User currentUser =
+                currentUserService.getCurrentUser();
 
         Transaction savedTransaction =
-                transactionRepository.save(transaction);
+                createTransactionInternal(
+                        currentUser.getId(),
+                        request.getAccountId(),
+                        request.getCategoryId(),
+                        request.getAmount(),
+                        request.getType(),
+                        request.getMerchant(),
+                        request.getDescription(),
+                        request.getTransactionDate(),
+                        request.getPaymentMethod(),
+                        request.getNotes(),
+                        false
+                );
 
         return mapToResponse(savedTransaction);
     }
@@ -304,6 +274,54 @@ public class TransactionService {
                 .stream()
                 .map(this::mapToResponse)
                 .toList();
+    }
+
+    Transaction createTransactionInternal(
+            String userId,
+            String accountId,
+            String categoryId,
+            BigDecimal amount,
+            TransactionType type,
+            String merchant,
+            String description,
+            LocalDateTime transactionDate,
+            com.finsight.backend.enums.PaymentMethod paymentMethod,
+            String notes,
+            boolean recurring) {
+
+        Account account = accountRepository
+                .findByIdAndUserId(accountId, userId)
+                .orElseThrow(() ->
+                        new AccountNotFoundException(
+                                "Account not found"
+                        ));
+
+        Transaction transaction = Transaction.builder()
+                .userId(userId)
+                .accountId(account.getId())
+                .categoryId(categoryId)
+                .amount(amount)
+                .type(type)
+                .merchant(merchant)
+                .description(description)
+                .transactionDate(transactionDate)
+                .paymentMethod(paymentMethod)
+                .notes(notes)
+                .status(TransactionStatus.COMPLETED)
+                .recurring(recurring)
+                .createdAt(LocalDateTime.now())
+                .updatedAt(LocalDateTime.now())
+                .build();
+
+        applyTransactionEffect(
+                account,
+                type,
+                amount
+        );
+
+        accountRepository.save(account);
+
+        return transactionRepository.save(transaction);
     }
 
     private TransactionResponse mapToResponse(
